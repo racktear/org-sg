@@ -1,5 +1,3 @@
-(setq org-testproject "org-racktear")
-
 (defun org-sg-filter-files-regex (files regex)
   (delq nil
         (mapcar (lambda (f) (when (string-match regex f) f))
@@ -261,21 +259,3 @@
 (defun org-sg-publish-completion-function()
   (org-sg-generate-site-index-file project)
   )
-
-
-(defun org-sg-foreach-blog-post-test ()
-  (let* ((filename "/tmp/test.html")
-         (visitingp (find-buffer-visiting filename))
-         (work-buffer (or visitingp (find-file-noselect filename)))
-         (testproject (assoc org-testproject org-publish-project-alist)))
-    (with-current-buffer work-buffer
-      (erase-buffer)
-      (org-sg-generate-site-body testproject)
-
-      )
-    )
-  )
-
-(org-sg-generate-site-index-file (assoc org-testproject org-publish-project-alist))
-(org-sg-foreach-blog-post-test)
-(org-sg-get-posts (assoc org-testproject org-publish-project-alist))
