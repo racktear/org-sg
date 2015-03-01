@@ -1,0 +1,9 @@
+* Org-Mode static site/blog generator
+
+This module is intended to extend org-mode HTML publishing capabilities
+providing a list of post excerpts, pagination and page templates.
+
+It's on the inception/experimentation stage.
+Use/try it out for fun, but expect things to break often.
+
+Usage information will be added later.
