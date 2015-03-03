@@ -19,7 +19,7 @@ Use/try it out for fun, but expect things to break.
 To get an idea what the result looks like, see my blog, which is generated with org-sg:
 [[http://racktear.com][racktear.com]]
 
-* Usage
+** Usage
 
 Set up an org-mode project like this:
 
@@ -47,12 +47,12 @@ Set up an org-mode project like this:
 Then publish your project with 'M-x org-publish'
 You'll then find blog index generated in '~/my-blog/output/index.html'.
 
-* Features
+** Features
 
 - Implemented as a minimal and thin layer on existing org-mode publisher
 - Non-intrusive support for blogging. Just write plain .org files with date and title tags.
 
-* Installation
+** Installation
 
 org-sg is not yet available in [[http://melpa.org][MELPA]], so you'll have to install it manually.
 First, get the sources, and then add the following to your ~/.emacs.d/init.el:
@@ -62,7 +62,7 @@ First, get the sources, and then add the following to your ~/.emacs.d/init.el:
 (require 'org-sg)
 #+END_SRC
 
-* Contribute
+** Contribute
 
 - Issue Tracker and Source Code: [[https://github.com/racktear/org-sg]]
 
@@ -70,6 +70,6 @@ Send pull requests directly to the master branch.
 
 Email the author: [[mailto:mail@racktear.com][mail@racktear.com]]
 
-* License
+** License
 
 The project is licensed under the GPLv3 License.
