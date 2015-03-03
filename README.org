@@ -9,13 +9,15 @@ If you are fan of org-mode and use it for TODOs and outlining, you'll find that
 it's a lot easier to produce and publish content with it than with Markdown, on
 which many other site generators are based.
 
-
 I've originally developed it because I find other tools too limiting. Instead,
 I wanted writing to fit organically into my daily workflow.
 
 Warning:
 It's on the inception/experimentation stage.
 Use/try it out for fun, but expect things to break.
+
+To get an idea what the result looks like, see my blog, which is generated with org-sg:
+[[http://racktear.com][racktear.com]]
 
 * Usage
 
