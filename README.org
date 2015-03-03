@@ -1,9 +1,73 @@
 * Org-Mode static site/blog generator
 
-This module is intended to extend org-mode HTML publishing capabilities
-providing a list of post excerpts, pagination and page templates.
+org-sg is a static site generator implemented on top of excellent org-mode
+package. It has support for blogging, publishing static pages and developer-friendly
+customization.
 
+Why use it:
+If you are fan of org-mode and use it for TODOs and outlining, you'll find that
+it's a lot easier to produce and publish content with it than with Markdown, on
+which many other site generators are based.
+
+
+I've originally developed it because I find other tools too limiting. Instead,
+I wanted writing to fit organically into my daily workflow.
+
+Warning:
 It's on the inception/experimentation stage.
-Use/try it out for fun, but expect things to break often.
+Use/try it out for fun, but expect things to break.
 
-Usage information will be added later.
+* Usage
+
+Set up an org-mode project like this:
+
+#+BEGIN_SRC elisp
+  (setq org-publish-project-alist
+        '(("my-blog"
+           :base-directory "~/my-blog/org"
+           :base-extension "org"
+           :blog-regex ".*"
+
+           :publishing-directory "~/my-blog/output"
+           :recursive t
+           :publishing-function org-sg-publish-to-html
+           :completion-function org-sg-publish-completion-function
+
+           :headline-levels 4
+           :html-extension "html"
+           :body-only t
+           :with-toc nil
+           :html-html5-fancy t
+           :html-doctype "xhtml5"
+           )))
+#+END_SRC
+
+Then publish your project with 'M-x org-publish'
+You'll then find blog index generated in '~/my-blog/output/index.html'.
+
+* Features
+
+- Implemented as a minimal and thin layer on existing org-mode publisher
+- Non-intrusive support for blogging. Just write plain .org files with date and title tags.
+
+* Installation
+
+org-sg is not yet available in [[http://melpa.org][MELPA]], so you'll have to install it manually.
+First, get the sources, and then add the following to your ~/.emacs.d/init.el:
+
+#+BEGIN_SRC elisp
+(add-to-list 'load-path "~/path/to/org-sg-directory")
+(require 'org-sg)
+#+END_SRC
+
+* Contribute
+
+- Issue Tracker and Source Code: [[https://github.com/racktear/org-sg]]
+
+Send pull requests directly to the master branch.
+
+Email the author: [[mailto:mail@racktear.com][mail@racktear.com]]
+
+* License
+
+The project is licensed under the GPLv3 License.
