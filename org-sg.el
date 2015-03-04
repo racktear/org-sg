@@ -67,7 +67,15 @@
     )
 )
 
-
+(defun org-sg-get-project-pub-dir (project)
+  (let ((project-plist (cdr project)))
+    (file-name-as-directory
+     (file-truename
+      (or (eval (plist-get project-plist :publishing-directory))
+          (error "Project %s does not have :publishing-directory defined"
+                 (car project)))))
+    )
+  )
 
 (defun org-sg-get-inbuffer-options (filename)
   (let* ((org-inhibit-startup t)
@@ -85,47 +93,6 @@
         (substring-no-properties option)
           )
       )
-    )
-  )
-
-(defun org-sg-get-posts (project)
-  (let* ((project-plist (cdr project))
-         (exclude-regexp (plist-get project-plist :exclude))
-         (blog-regex (plist-get project-plist :blog-regex))
-         (candidate-files (org-publish-get-base-files project exclude-regexp))
-         (files (org-sg-filter-files-regex candidate-files blog-regex))
-         options
-         result
-         posts-with-timestamp
-         posts-without-timestamp
-         result-sorted
-         )
-    (dolist (file files result)
-      (setq options (org-sg-get-inbuffer-options file))
-      (setq result (cons (list :file file
-                               :author (org-sg-get-option options :author)
-                               :date (when (org-sg-get-option options :date)
-                                       (apply 'encode-time
-                                              (org-parse-time-string
-                                               (org-sg-get-option options :date))))
-                               :title (org-sg-get-option options :title)
-                               :keywords (when (org-sg-get-option options :keywords)
-                                           (split-string (org-sg-get-option options :keywords))))
-                         result))
-      )
-    (setq posts-with-timestamp (delq nil (mapcar (lambda (x)
-                                                   (and (plist-get x :date) x))
-                                                 result)))
-    (setq posts-without-timestamp (delq nil (mapcar (lambda (x)
-                                                      (and (not (plist-get x :date)) x))
-                                                    result)))
-    (append (sort posts-with-timestamp
-                  (lambda (a b) (time-less-p (plist-get b :date)
-                                             (plist-get a :date))))
-            (sort posts-without-timestamp
-                  (lambda (a b) (string< (plist-get b :file)
-                                         (plist-get a :file))))
-            )
     )
   )
 
@@ -162,6 +129,73 @@
 
       output-file
       )
+    )
+  )
+
+
+(defun org-sg-get-posts (project)
+  (let* ((project-plist (cdr project))
+         (exclude-regexp (plist-get project-plist :exclude))
+         (blog-regex (plist-get project-plist :blog-regex))
+         (candidate-files (org-publish-get-base-files project exclude-regexp))
+         (files (org-sg-filter-files-regex candidate-files blog-regex))
+         (pub-dir (org-sg-get-project-pub-dir project))
+         options
+         output-file
+         result
+         posts-with-timestamp
+         posts-without-timestamp
+         result-sorted
+         )
+    (dolist (file files result)
+      (setq options (org-sg-get-inbuffer-options file))
+      (setq output-file (org-sg-get-output-file-name file))
+
+      (setq result (cons (list :file file
+                               :excerpt (concat (file-name-sans-extension output-file)
+                                                ".excerpt.html")
+                               :body (concat (file-name-sans-extension output-file)
+                                             ".body.html")
+                               :output output-file
+                               :pub-dir pub-dir
+
+                               :author (org-sg-get-option options :author)
+                               :date (when (org-sg-get-option options :date)
+                                       (apply 'encode-time
+                                              (org-parse-time-string
+                                               (org-sg-get-option options :date))))
+                               :title (org-sg-get-option options :title)
+                               :keywords (when (org-sg-get-option options :keywords)
+                                           (split-string (org-sg-get-option options :keywords))))
+                         result))
+      )
+    (setq posts-with-timestamp (delq nil (mapcar (lambda (x)
+                                                   (and (plist-get x :date) x))
+                                                 result)))
+    (setq posts-without-timestamp (delq nil (mapcar (lambda (x)
+                                                      (and (not (plist-get x :date)) x))
+                                                    result)))
+    (append (sort posts-with-timestamp
+                  (lambda (a b) (time-less-p (plist-get b :date)
+                                             (plist-get a :date))))
+            (sort posts-without-timestamp
+                  (lambda (a b) (string< (plist-get b :file)
+                                         (plist-get a :file))))
+            )
+    )
+  )
+
+(defun org-sg-get-file-content (filename)
+  (let* ((org-inhibit-startup t)
+         (visitingp (find-buffer-visiting filename))
+         (work-buffer (or visitingp (find-file-noselect filename)))
+         buffer-as-string
+         )
+    (with-current-buffer work-buffer
+      (setq buffer-as-string
+            (buffer-substring-no-properties (point-min) (point-max)))
+      )
+    buffer-as-string
     )
   )
 
@@ -202,12 +236,17 @@
 
 (defun org-sg-gen-post-excerpts (posts start end)
   (dotimes (i (- end start))
-    (let* ((post (nth i posts)))
+    (let* ((post (nth i posts))
+           (post-output-file (plist-get post :output))
+           (pub-dir (plist-get post :pub-dir))
+           (output-rel (file-relative-name post-output-file pub-dir)))
       (insert "<h1>")
       (insert (or (plist-get post :title)
                   "Untitled"))
       (insert "</h1>\n")
-      (insert (org-sg-get-post-excerpt (plist-get post :file)))
+      (insert (org-sg-get-file-content (plist-get post :excerpt)))
+      (insert "<br/>")
+      (insert "<a href=") (insert output-rel) (insert "> More </a>")
       (insert "<hr/>\n")
       )
     )
@@ -231,17 +270,23 @@
   (org-sg-generate-post-list project)
   (insert "<body>\n")
   (insert "</html>\n")
+  )
 
+(defun org-sg-generate-post-body (post)
+  (insert "<html>\n")
+  (insert "<head></head>\n")
+  (insert "<body>\n")
+  (insert "<h1>")
+  (insert (or (plist-get post :title)
+              "Untitled"))
+  (insert "</h1>\n")
+  (insert (org-sg-get-file-content (plist-get post :body)))
+  (insert "<body>\n")
+  (insert "</html>\n")
   )
 
 (defun org-sg-generate-site-index-file (project)
-  (let* ((project-plist (cdr project))
-         (pub-dir
-          (file-name-as-directory
-           (file-truename
-            (or (eval (plist-get project-plist :publishing-directory))
-                (error "Project %s does not have :publishing-directory defined"
-                       (car project))))))
+  (let* ((pub-dir (org-sg-get-project-pub-dir project))
          (filename (concat pub-dir "index.html"))
          (visitingp (find-buffer-visiting filename))
          (work-buffer (or visitingp (find-file-noselect filename)))
@@ -252,10 +297,30 @@
       (org-sg-generate-site-body project)
       (save-buffer)
       )
+    )
+  )
 
+(defun org-sg-generate-posts (project)
+  (let* ((project-plist (cdr project))
+         (posts (org-sg-get-posts project))
+         result
+         filename
+         )
+    (dolist (post posts result)
+      (setq filename (org-sg-get-output-file-name (plist-get post :file)))
+      (let* ((visitingp (find-buffer-visiting filename))
+             (work-buffer (or visitingp (find-file-noselect filename))))
+        (with-current-buffer work-buffer
+          (erase-buffer)
+          (org-sg-generate-post-body post)
+          (save-buffer)
+          )
+        )
+      )
     )
   )
 
 (defun org-sg-publish-completion-function()
   (org-sg-generate-site-index-file project)
+  (org-sg-generate-posts project)
   )
