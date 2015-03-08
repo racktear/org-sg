@@ -253,7 +253,6 @@
   )
 
 (defun org-sg-generate-post-list (project)
-  (insert "<hr>\n")
   (let ((posts (org-sg-get-posts project)))
     (org-sg-gen-post-excerpts posts 0 (length posts))
     )
@@ -267,10 +266,13 @@
                           "")))
 
     (insert "<html>\n")
-    (insert "<head></head>\n")
+    (insert "<head>")
+    (insert org-html-style-default)
+    (insert "</head>\n")
     (insert "<body>\n")
     (insert "<h1>")(insert title)(insert "</h1>\n")
     (insert "<h2>")(insert description)(insert "</h2>\n")
+    (insert "<hr>\n")
   ))
 
 (defun org-sg-generate-site-footer (project)
