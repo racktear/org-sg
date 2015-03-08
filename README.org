@@ -1,5 +1,7 @@
 * Org-Mode static site/blog generator
 
+[[https://travis-ci.org/racktear/org-sg.svg?branch=master]]
+
 org-sg is a static site generator implemented on top of excellent org-mode
 package. It has support for blogging, publishing static pages and developer-friendly
 customization.
