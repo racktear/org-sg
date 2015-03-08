@@ -1,3 +1,38 @@
+;;; org-sg.el --- org-mode static site/blog generator
+
+;; Copyright (C) 2015 Konstantin Nazarov <mail@racktear.com>
+
+;; Author: Konstantin Nazarov <mail@racktear.com>
+;; URL: https://github.com/racktear/org-sg
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; org-sg is a static site generator implemented on top of excellent
+;; org-mode package. It has support for blogging, publishing static
+;; pages and developer-friendly customization.
+
+;;; Code:
+
+;;; Dependencies
+
+(require 'ox)
+(require 'ox-publish)
+
+;;; Internal Variables
+
 (defconst org-sg-style-default
   "<style type=\"text/css\">
  <!--/*--><![CDATA[/*><!--*/
@@ -48,22 +83,6 @@
              files ))
   )
 
-(defun org-sg-blog-index (project)
-  (let* ((project-plist (cdr project))
-         (exclude-regexp (plist-get project-plist :exclude))
-         (blog-regex (plist-get project-plist :blog-regex))
-         (candidate-files (org-publish-get-base-files project exclude-regexp))
-         (files (org-sg-filter-files-regex candidate-files blog-regex))
-         (preparation-function
-          (plist-get project-plist :preparation-function)))
-    (when preparation-function (run-hooks 'preparation-function))
-    (plist-get project-plist :preparation-function)
-    project-plist
-    )
-
-  )
-
-
 (defun org-sg-cut(backend)
   (goto-char (point-min))
   (when (re-search-forward "^#\\+CUT" nil t)
@@ -86,14 +105,6 @@
 (defun org-sg-publish-preparation-function()
   (add-hook 'org-export-before-parsing-hook 'org-sg-remove-cut)
   )
-
-
-;;(add-hook 'org-export-before-parsing-hook 'org-sg-remove-cut)
-
-
-;;(org-sg-blog-index (assoc org-testproject org-publish-project-alist))
-
-
 
 
 (defun org-sg-publish-to-html (plist filename pub-dir)
@@ -414,6 +425,12 @@
   )
 
 (defun org-sg-publish-completion-function()
-  (org-sg-generate-site-index-file project)
-  (org-sg-generate-posts project)
+  (if (boundp 'project)
+      (progn
+        (org-sg-generate-site-index-file project)
+        (org-sg-generate-posts project)
+        )
+      (error "variable 'project' is not defined"))
   )
+
+;;; org-sg.el ends here
