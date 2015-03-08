@@ -1,3 +1,47 @@
+(defconst org-sg-style-default
+  "<style type=\"text/css\">
+ <!--/*--><![CDATA[/*><!--*/
+  body {
+    -webkit-font-feature-settings: 'kern' 1;
+    -moz-font-feature-settings: 'kern' 1;
+    -ms-font-feature-settings: 'kern' 1;
+    -o-font-feature-settings: 'kern' 1;
+    font-feature-settings: 'kern' 1;
+    height: 100%;
+    max-height: 100%;
+    font-family: \"Helvetica Neue\", Arial, sans-serif; ;
+    /*font-size: 2.2rem;*/
+    line-height: 1.7em;
+    color: #3A4145;
+  }
+
+  .main-header {
+    position: relative;
+    display: table;
+    width: 100%;
+    margin-bottom: 5rem;
+    text-align: center;
+    background-size: cover;
+    overflow: hidden;
+  }
+
+  .main-header .inner {
+    width: 80%;
+  }
+  .post {
+    position: relative;
+    width: 80%;
+    max-width: 780px;
+    margin: 4rem auto;
+    padding-bottom: 4rem;
+    border-bottom: #EBF2F6 1px solid;
+    word-break: break-word;
+    hyphens: auto;
+  }
+ /*]]>*/-->
+ </style>"
+  )
+
 (defun org-sg-filter-files-regex (files regex)
   (delq nil
         (mapcar (lambda (f) (when (string-match regex f) f))
@@ -234,27 +278,59 @@
   )
 
 
-(defun org-sg-gen-post-excerpts (posts start end)
+(defun org-sg-generate-post-body (project post)
+  (insert "<article class=\"post\">")
+  (insert "<header class=\"post-header\">")
+  (insert "<h2>")
+  (insert (or (plist-get post :title)
+              "Untitled"))
+  (insert "</h2>\n")
+  (insert "<section class=\"post-content\">")
+  (insert "</header>")
+  (insert (org-sg-get-file-content (plist-get post :body)))
+  (insert "</section>")
+  (insert "<footer>")
+  (insert "</footer>")
+  (insert "</article>")
+  )
+
+(defun org-sg-generate-post-excerpt (project post)
+  (let* ((post-output-file (plist-get post :output))
+         (pub-dir (plist-get post :pub-dir))
+         (output-rel (file-relative-name post-output-file pub-dir)))
+    (insert "<article class=\"post\">")
+    (insert "<header class=\"post-header\">")
+    (insert "<h2>")
+    (insert (or (plist-get post :title)
+                "Untitled"))
+    (insert "</h2>\n")
+    (insert "<section class=\"post-excerpt\">")
+    (insert "</header>")
+    (insert (org-sg-get-file-content (plist-get post :excerpt)))
+    (insert "<br/>")
+    (insert "<a href=") (insert output-rel) (insert "> More </a>")
+    (insert "</section>")
+    (insert "<footer>")
+    (insert "</footer>")
+    (insert "</article>")
+    )
+  )
+
+
+(defun org-sg-gen-post-excerpts (project posts start end)
   (dotimes (i (- end start))
     (let* ((post (nth i posts))
            (post-output-file (plist-get post :output))
            (pub-dir (plist-get post :pub-dir))
            (output-rel (file-relative-name post-output-file pub-dir)))
-      (insert "<h1>")
-      (insert (or (plist-get post :title)
-                  "Untitled"))
-      (insert "</h1>\n")
-      (insert (org-sg-get-file-content (plist-get post :excerpt)))
-      (insert "<br/>")
-      (insert "<a href=") (insert output-rel) (insert "> More </a>")
-      (insert "<hr/>\n")
+      (org-sg-generate-post-excerpt project post)
       )
     )
   )
 
 (defun org-sg-generate-post-list (project)
   (let ((posts (org-sg-get-posts project)))
-    (org-sg-gen-post-excerpts posts 0 (length posts))
+    (org-sg-gen-post-excerpts project posts 0 (length posts))
     )
   )
 
@@ -267,11 +343,14 @@
 
     (insert "<html>\n")
     (insert "<head>")
+    (insert org-sg-style-default)
     (insert org-html-style-default)
     (insert "</head>\n")
     (insert "<body>\n")
-    (insert "<h1>")(insert title)(insert "</h1>\n")
-    (insert "<h2>")(insert description)(insert "</h2>\n")
+    (insert "<header class=\"main-header\">")
+    (insert "<h1 class=\"page-title\">")(insert title)(insert "</h1>\n")
+    (insert "<h2 class=\"page-description\">")(insert description)(insert "</h2>\n")
+    (insert "</header>")
     (insert "<hr>\n")
   ))
 
@@ -280,21 +359,18 @@
   (insert "</html>\n")
   )
 
-(defun org-sg-generate-site-body (project)
+(defun org-sg-generate-site-index (project)
   (org-sg-generate-site-header project)
   (org-sg-generate-post-list project)
   (org-sg-generate-site-footer project)
   )
 
-(defun org-sg-generate-post-body (project post)
+(defun org-sg-generate-full-post (project post)
   (org-sg-generate-site-header project)
-  (insert "<h1>")
-  (insert (or (plist-get post :title)
-              "Untitled"))
-  (insert "</h1>\n")
-  (insert (org-sg-get-file-content (plist-get post :body)))
+  (org-sg-generate-post-body project post)
   (org-sg-generate-site-footer project)
   )
+
 
 (defun org-sg-generate-site-index-file (project)
   (let* ((pub-dir (org-sg-get-project-pub-dir project))
@@ -305,8 +381,23 @@
 
     (with-current-buffer work-buffer
       (erase-buffer)
-      (org-sg-generate-site-body project)
+      (org-sg-generate-site-index project)
       (save-buffer)
+      )
+    )
+  )
+
+(defun org-sg-generate-single-post (project post)
+  (let* ((project-plist (cdr project))
+         (filename (org-sg-get-output-file-name (plist-get post :file)))
+         )
+    (let* ((visitingp (find-buffer-visiting filename))
+           (work-buffer (or visitingp (find-file-noselect filename))))
+      (with-current-buffer work-buffer
+        (erase-buffer)
+        (org-sg-generate-full-post project post)
+        (save-buffer)
+        )
       )
     )
   )
@@ -315,18 +406,9 @@
   (let* ((project-plist (cdr project))
          (posts (org-sg-get-posts project))
          result
-         filename
          )
     (dolist (post posts result)
-      (setq filename (org-sg-get-output-file-name (plist-get post :file)))
-      (let* ((visitingp (find-buffer-visiting filename))
-             (work-buffer (or visitingp (find-file-noselect filename))))
-        (with-current-buffer work-buffer
-          (erase-buffer)
-          (org-sg-generate-post-body project post)
-          (save-buffer)
-          )
-        )
+      (org-sg-generate-single-post project post)
       )
     )
   )
