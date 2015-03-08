@@ -43,7 +43,7 @@ ELC			:= $(EL:.el=.elc)
 
 .PHONY: clean autoloads batch-compile
 
-all: clean autoloads batch-compile
+all: clean autoloads batch-compile test
 
 $(ELC): %.elc: %.el
 	$(EMACS) $(LOADPATH) -f batch-byte-compile $<
@@ -63,3 +63,6 @@ clean:
 autoloads:
 	$(EVAL) "(let ((generated-autoload-file (expand-file-name \"org-sg-autoloads.el\" \"$(PKGDIR)\")) \
 (backup-inhibited t)) (update-directory-autoloads \"$(PKGDIR)\"))"
+
+test:
+	$(EMACS) $(LOADPATH) -batch -l ert -l org-sg-tests.el -f ert-run-tests-batch-and-exit

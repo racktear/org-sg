@@ -433,5 +433,5 @@
       (error "variable 'project' is not defined"))
   )
 
-
+(provide 'org-sg)
 ;;; org-sg.el ends here
