@@ -433,6 +433,5 @@
       (error "variable 'project' is not defined"))
   )
 
-(this-should-break-travis-ci-build
 
 ;;; org-sg.el ends here
