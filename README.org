@@ -75,3 +75,4 @@ Email the author: [[mailto:mail@racktear.com][mail@racktear.com]]
 ** License
 
 The project is licensed under the GPLv3 License.
+[[http://getskeleton.com][Skeleton CSS boilerplate]] is licensed under the MIT License.

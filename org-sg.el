@@ -33,7 +33,13 @@
 
 ;;; Internal Variables
 
-(defconst org-sg-style-default
+(setq org-sg-css-directory (concat
+                            (expand-file-name (file-name-directory load-file-name))
+                            "css/"))
+
+
+
+(setq org-sg-style-default
   "<style type=\"text/css\">
  <!--/*--><![CDATA[/*><!--*/
   body {
@@ -44,7 +50,7 @@
     font-feature-settings: 'kern' 1;
     height: 100%;
     max-height: 100%;
-    font-family: \"Helvetica Neue\", Arial, sans-serif; ;
+    font-family: \"Helvetica Neue\", Arial, sans-serif;
     /*font-size: 2.2rem;*/
     line-height: 1.7em;
     color: #3A4145;
@@ -73,9 +79,20 @@
     word-break: break-word;
     hyphens: auto;
   }
+
+  a {
+    color: #18BC9C;
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
  /*]]>*/-->
  </style>"
   )
+
+(defconst org-sg-htmlize-output-type 'css)
 
 (defun org-sg-filter-files-regex (files regex)
   (delq nil
@@ -108,13 +125,15 @@
 
 
 (defun org-sg-publish-to-html (plist filename pub-dir)
-  (let* ((org-export-before-parsing-hook org-export-before-parsing-hook))
+  (let* ((org-export-before-parsing-hook org-export-before-parsing-hook)
+         (org-html-htmlize-output-type org-sg-htmlize-output-type))
     (add-hook 'org-export-before-parsing-hook 'org-sg-remove-cut)
     (org-publish-org-to 'html filename
                         (concat ".body.html")
                         plist pub-dir)
     )
-  (let* ((org-export-before-parsing-hook org-export-before-parsing-hook))
+  (let* ((org-export-before-parsing-hook org-export-before-parsing-hook)
+         (org-html-htmlize-output-type org-sg-htmlize-output-type))
     (add-hook 'org-export-before-parsing-hook 'org-sg-cut)
     (org-publish-org-to 'html filename
                         (concat ".excerpt.html")
@@ -345,6 +364,18 @@
     )
   )
 
+(defun org-sg-css-to-inline (css-file)
+  (let ((css-content (org-sg-get-file-content css-file)))
+    (concat
+     "<style type=\"text/css\">
+ <!--/*--><![CDATA[/*><!--*/"
+     css-content
+     " /*]]>*/-->
+ </style>"
+     )
+    )
+  )
+
 (defun org-sg-generate-site-header (project)
   (let* ((project-plist (cdr project))
          (title (or (plist-get project-plist :org-sg-title)
@@ -354,18 +385,28 @@
 
     (insert "<html>\n")
     (insert "<head>")
-    (insert org-sg-style-default)
-    (insert org-html-style-default)
+    (insert "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>")
+    (insert "<link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>")
+
+    (insert (org-sg-css-to-inline (concat org-sg-css-directory "normalize.css")))
+    (insert (org-sg-css-to-inline (concat org-sg-css-directory "skeleton.css")))
+    (insert (org-sg-css-to-inline (concat org-sg-css-directory "custom.css")))
     (insert "</head>\n")
     (insert "<body>\n")
+    (insert "<div class=\"container\">")
+    (insert "<section class=\"header\">")
     (insert "<header class=\"main-header\">")
     (insert "<h1 class=\"page-title\">")(insert title)(insert "</h1>\n")
     (insert "<h2 class=\"page-description\">")(insert description)(insert "</h2>\n")
     (insert "</header>")
+    (insert "</section>")
+    (insert "</div>")
     (insert "<hr>\n")
+    (insert "<div class=\"container\">")
   ))
 
 (defun org-sg-generate-site-footer (project)
+  (insert "</div>")
   (insert "<body>\n")
   (insert "</html>\n")
   )
