@@ -94,6 +94,8 @@
 
 (defconst org-sg-htmlize-output-type 'css)
 
+(defconst org-sg-default-posts-per-page 10)
+
 (defun org-sg-filter-files-regex (files regex)
   (delq nil
         (mapcar (lambda (f) (when (string-match regex f) f))
@@ -348,21 +350,58 @@
 
 
 (defun org-sg-gen-post-excerpts (project posts start end)
-  (dotimes (i (- end start))
-    (let* ((post (nth i posts))
-           (post-output-file (plist-get post :output))
-           (pub-dir (plist-get post :pub-dir))
-           (output-rel (file-relative-name post-output-file pub-dir)))
-      (org-sg-generate-post-excerpt project post)
+  (let* ((posts-per-page (org-sg-get-posts-per-page project))
+         )
+    (dotimes (i (+ 1 (- end start)))
+      (let* ((post (nth (+ start i) posts))
+             (post-output-file (plist-get post :output))
+             (pub-dir (plist-get post :pub-dir))
+             (output-rel (file-relative-name post-output-file pub-dir)))
+        (org-sg-generate-post-excerpt project post)
+        )
       )
+
+  ))
+
+(defun org-sg-get-posts-per-page (project)
+  (let* ((project-plist (cdr project))
+         (posts-per-page (plist-get project-plist :posts-per-page)))
+    (or posts-per-page org-sg-default-posts-per-page)
     )
   )
 
-(defun org-sg-generate-post-list (project)
-  (let ((posts (org-sg-get-posts project)))
-    (org-sg-gen-post-excerpts project posts 0 (length posts))
+(defun org-sg-pagination-numpages (total perpage)
+  (+ 1 (/ (- total 1) perpage))
+  )
+
+(defun org-sg-pagination-nth (total perpage n)
+  (when (< (- (org-sg-pagination-numpages total perpage) 1)
+           n)
+    (error "Page out of range: %d" n))
+  (list (* n perpage)
+        (- (min total (* (+ n 1) perpage)) 1))
+  )
+
+(defun org-sg-pagination-begin (total perpage n)
+  (first (org-sg-pagination-nth total perpage n))
+  )
+
+(defun org-sg-pagination-end (total perpage n)
+  (second (org-sg-pagination-nth total perpage n))
+  )
+
+(defun org-sg-generate-post-list (project pagenum)
+  (let* ((posts (org-sg-get-posts project))
+         (posts-per-page (org-sg-get-posts-per-page project))
+         (numposts (length posts)))
+    (org-sg-gen-post-excerpts
+     project
+     posts
+     (org-sg-pagination-begin numposts posts-per-page pagenum)
+     (org-sg-pagination-end numposts posts-per-page pagenum))
     )
   )
+
 
 (defun org-sg-css-to-inline (css-file)
   (let ((css-content (org-sg-get-file-content css-file)))
@@ -376,6 +415,7 @@
     )
   )
 
+
 (defun org-sg-generate-site-header (project)
   (let* ((project-plist (cdr project))
          (title (or (plist-get project-plist :org-sg-title)
@@ -385,6 +425,7 @@
 
     (insert "<html>\n")
     (insert "<head>")
+    (insert "<meta charset=\"urf-8\"/>")
     (insert "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>")
     (insert "<link href='http://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>")
 
@@ -411,9 +452,42 @@
   (insert "</html>\n")
   )
 
-(defun org-sg-generate-site-index (project)
+(defun org-sg-generate-pagination-nav (project pagenum)
+  (let* ((posts (org-sg-get-posts project))
+         (posts-per-page (org-sg-get-posts-per-page project))
+         (numposts (length posts))
+         (numpages (org-sg-pagination-numpages numposts posts-per-page)))
+    (insert "<div><nav class=\"pagination\">\n")
+
+    (when (> pagenum 0)
+      (insert "<a class=\"button newer-posts\" href=\"")
+      (insert "page_")(insert (int-to-string (- pagenum 1)))(insert ".html")
+      (insert "\">&larr; Newer Posts</a>\n")
+      )
+
+    (insert "<span class=\"page-number\">")
+    (insert "Page ")
+    (insert (int-to-string (+ 1 pagenum)))
+    (insert " of ")
+    (insert (int-to-string numpages))
+    (insert "</span>")
+
+    (when (< pagenum (- numpages 1))
+      (insert "<a class=\"button older-posts\" href=\"")
+      (insert "page_")(insert (int-to-string (+ 1 pagenum)))(insert ".html")
+      (insert "\">Older Posts &rarr;</a>\n")
+      )
+
+    (insert "</nav></div>")
+
+      )
+  )
+
+(defun org-sg-generate-site-page (project pagenum)
   (org-sg-generate-site-header project)
-  (org-sg-generate-post-list project)
+  (org-sg-generate-pagination-nav project pagenum)
+  (org-sg-generate-post-list project pagenum)
+  (org-sg-generate-pagination-nav project pagenum)
   (org-sg-generate-site-footer project)
   )
 
@@ -433,7 +507,22 @@
 
     (with-current-buffer work-buffer
       (erase-buffer)
-      (org-sg-generate-site-index project)
+      (org-sg-generate-site-page project 0)
+      (save-buffer)
+      )
+    )
+  )
+
+(defun org-sg-generate-site-page-file (project pagenum)
+  (let* ((pub-dir (org-sg-get-project-pub-dir project))
+         (filename (concat pub-dir "/page_" (int-to-string pagenum) ".html"))
+         (visitingp (find-buffer-visiting filename))
+         (work-buffer (or visitingp (find-file-noselect filename)))
+         )
+
+    (with-current-buffer work-buffer
+      (erase-buffer)
+      (org-sg-generate-site-page project pagenum)
       (save-buffer)
       )
     )
@@ -465,11 +554,29 @@
     )
   )
 
+(defun org-sg-generate-pages (project)
+  (let* ((project-plist (cdr project))
+         (posts (org-sg-get-posts project))
+         (posts-per-page (org-sg-get-posts-per-page project))
+         (numposts (length posts))
+         (numpages (org-sg-pagination-numpages numposts posts-per-page))
+         result
+         )
+    (dotimes (numpage numpages)
+      (org-sg-generate-site-page-file project numpage)
+      )
+    numposts
+    )
+  )
+
+
+
 (defun org-sg-publish-completion-function()
   (if (boundp 'project)
       (progn
         (org-sg-generate-site-index-file project)
         (org-sg-generate-posts project)
+        (org-sg-generate-pages project)
         )
       (error "variable 'project' is not defined"))
   )
